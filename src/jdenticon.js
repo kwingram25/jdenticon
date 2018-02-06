@@ -2,7 +2,7 @@
  * Jdenticon
  * https://github.com/dmester/jdenticon
  * Copyright © Daniel Mester Pirttijärvi
- * 
+ *
  * This file contains the public interface of Jdenticon.
  */
 "use strict";
@@ -13,7 +13,7 @@ const SvgElement = require("./svgElement");
 const SvgWriter = require("./svgWriter");
 const sha1 = require("./sha1");
 const CanvasRenderer = require("./canvasRenderer");
- 
+
 // <debug>
 var global = typeof window !== "undefined" ? window : {},
     jQuery = global.jQuery;
@@ -31,13 +31,13 @@ function getCurrentConfig() {
     var configObject = jdenticon["config"] || global["jdenticon_config"] || { },
         lightnessConfig = configObject["lightness"] || { },
         saturation = configObject["saturation"];
-    
+
     /**
      * Creates a lightness range.
      */
     function lightness(configName, defaultMin, defaultMax) {
         var range = lightnessConfig[configName] instanceof Array ? lightnessConfig[configName] : [defaultMin, defaultMax];
-        
+
         /**
          * Gets a lightness relative the specified value in the specified lightness range.
          */
@@ -46,7 +46,7 @@ function getCurrentConfig() {
             return value < 0 ? 0 : value > 1 ? 1 : value;
         };
     }
-        
+
     return {
         saturation: typeof saturation == "number" ? saturation : 0.5,
         colorLightness: lightness("color", 0.4, 0.8),
@@ -55,7 +55,7 @@ function getCurrentConfig() {
 }
 
 /**
- * Inputs a value that might be a valid hash string for Jdenticon and returns it 
+ * Inputs a value that might be a valid hash string for Jdenticon and returns it
  * if it is determined valid, otherwise a falsy value is returned.
  */
 function getValidHash(hashCandidate) {
@@ -90,43 +90,43 @@ function update(el, hash, padding) {
         // No element found
         return;
     }
-    
+
     var isSvg = /svg/i.test(el["tagName"]),
         isCanvas = /canvas/i.test(el["tagName"]);
-    
+
     // Ensure we have a supported element
     if (!isSvg && !(isCanvas && "getContext" in el)) {
         return;
     }
-    
-    // Hash selection. The result from getValidHash or computeHash is 
+
+    // Hash selection. The result from getValidHash or computeHash is
     // accepted as a valid hash.
-    hash = 
+    hash =
         // 1. Explicit valid hash
         getValidHash(hash) ||
-        
+
         // 2. Explicit value
         hash && computeHash(hash) ||
-        
+
         // 3. `data-jdenticon-hash` attribute
         getValidHash(el.getAttribute(HASH_ATTRIBUTE)) ||
-        
-        // 4. `data-jdenticon-value` attribute. 
-        // We want to treat an empty attribute as an empty value. 
-        // Some browsers return empty string even if the attribute 
-        // is not specified, so use hasAttribute to determine if 
+
+        // 4. `data-jdenticon-value` attribute.
+        // We want to treat an empty attribute as an empty value.
+        // Some browsers return empty string even if the attribute
+        // is not specified, so use hasAttribute to determine if
         // the attribute is specified.
         el.hasAttribute(VALUE_ATTRIBUTE) && computeHash(el.getAttribute(VALUE_ATTRIBUTE));
-    
+
     if (!hash) {
         // No hash specified. Don't render an icon.
         return;
     }
-    
-    var renderer = isSvg ? 
-        new SvgRenderer(new SvgElement(el)) : 
+
+    var renderer = isSvg ?
+        new SvgRenderer(new SvgElement(el)) :
         new CanvasRenderer(el.getContext("2d"));
-    
+
     // Draw icon
     iconGenerator(renderer, hash, 0, 0, renderer.size, padding, getCurrentConfig());
 }
@@ -141,10 +141,10 @@ function drawIcon(ctx, hashOrValue, size) {
     if (!ctx) {
         throw new Error("No canvas specified.");
     }
-    
+
     var renderer = new CanvasRenderer(ctx, size);
-    iconGenerator(renderer, 
-        getValidHash(hashOrValue) || computeHash(hashOrValue), 
+    iconGenerator(renderer,
+        getValidHash(hashOrValue) || computeHash(hashOrValue),
         0, 0, size, 0, getCurrentConfig());
 }
 
@@ -158,10 +158,13 @@ function drawIcon(ctx, hashOrValue, size) {
 function toSvg(hashOrValue, size, padding) {
     var writer = new SvgWriter(size);
     var renderer = new SvgRenderer(writer);
-    iconGenerator(renderer, 
+    iconGenerator(renderer,
         getValidHash(hashOrValue) || computeHash(hashOrValue),
         0, 0, size, padding, getCurrentConfig());
-    return writer.toString();
+    return {
+      svg: writer.toString(),
+      colors: Object.keys(renderer._pathsByColor)
+    };
 }
 
 /**
