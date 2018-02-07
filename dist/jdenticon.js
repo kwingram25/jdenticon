@@ -2,7 +2,7 @@
  * Jdenticon 1.8.0
  * http://jdenticon.com
  *  
- * Built: 2018-02-06T23:32:50.437Z
+ * Built: 2018-02-07T00:03:16.284Z
  *
  * Copyright (c) 2014-2018 Daniel Mester Pirttijärvi
  *
@@ -52,38 +52,6 @@
  * @private
  * @constructor
  */
-function SvgWriter(size) {
-    this.size = size;
-    this._s =
-        '<svg xmlns="http://www.w3.org/2000/svg" width="' + 
-        size + '" height="' + size + '" viewBox="0 0 ' + 
-        size + ' ' + size + '" preserveAspectRatio="xMidYMid meet">';
-}
-SvgWriter.prototype = {
-    /**
-     * Writes a path to the SVG string.
-     * @param {string} color Fill color on format #xxxxxx.
-     * @param {string} dataString The SVG path data string.
-     */
-    append: function (color, dataString) {
-        this._s += 
-            '<path fill="' + color + '" d="' + dataString + '"/>';
-    },
-    /**
-     * Gets the rendered image as an SVG string.
-     */
-    toString: function () {
-        return this._s + "</svg>";
-    }
-};
-
-
-
-/**
- * Renderer producing SVG output.
- * @private
- * @constructor
- */
 function SvgElement(element) {
     // Don't use the clientWidth and clientHeight properties on SVG elements
     // since Firefox won't serve a proper value of these properties on SVG
@@ -116,6 +84,38 @@ SvgElement.prototype = {
         path.setAttribute("fill", color);
         path.setAttribute("d", dataString);
         this._el.appendChild(path);
+    }
+};
+
+
+
+/**
+ * Renderer producing SVG output.
+ * @private
+ * @constructor
+ */
+function SvgWriter(size) {
+    this.size = size;
+    this._s =
+        '<svg xmlns="http://www.w3.org/2000/svg" width="' + 
+        size + '" height="' + size + '" viewBox="0 0 ' + 
+        size + ' ' + size + '" preserveAspectRatio="xMidYMid meet">';
+}
+SvgWriter.prototype = {
+    /**
+     * Writes a path to the SVG string.
+     * @param {string} color Fill color on format #xxxxxx.
+     * @param {string} dataString The SVG path data string.
+     */
+    append: function (color, dataString) {
+        this._s += 
+            '<path fill="' + color + '" d="' + dataString + '"/>';
+    },
+    /**
+     * Gets the rendered image as an SVG string.
+     */
+    toString: function () {
+        return this._s + "</svg>";
     }
 };
 
@@ -707,6 +707,56 @@ Graphics.prototype = {
 
 
 
+/**
+ * Represents a point.
+ * @private
+ * @constructor
+ */
+function Point(x, y) {
+    this.x = x;
+    this.y = y;
+};
+
+
+
+
+/**
+ * Translates and rotates a point before being passed on to the canvas context. This was previously done by the canvas context itself, 
+ * but this caused a rendering issue in Chrome on sizes > 256 where the rotation transformation of inverted paths was not done properly.
+ * @param {number} x The x-coordinate of the upper left corner of the transformed rectangle.
+ * @param {number} y The y-coordinate of the upper left corner of the transformed rectangle.
+ * @param {number} size The size of the transformed rectangle.
+ * @param {number} rotation Rotation specified as 0 = 0 rad, 1 = 0.5π rad, 2 = π rad, 3 = 1.5π rad
+ * @private
+ * @constructor
+ */
+function Transform(x, y, size, rotation) {
+    this._x = x;
+    this._y = y;
+    this._size = size;
+    this._rotation = rotation;
+}
+Transform.prototype = {
+    /**
+     * Transforms the specified point based on the translation and rotation specification for this Transform.
+     * @param {number} x x-coordinate
+     * @param {number} y y-coordinate
+     * @param {number=} w The width of the transformed rectangle. If greater than 0, this will ensure the returned point is of the upper left corner of the transformed rectangle.
+     * @param {number=} h The height of the transformed rectangle. If greater than 0, this will ensure the returned point is of the upper left corner of the transformed rectangle.
+     */
+    transformPoint: function (x, y, w, h) {
+        var right = this._x + this._size,
+            bottom = this._y + this._size;
+        return this._rotation === 1 ? new Point(right - y - (h || 0), this._y + x) :
+               this._rotation === 2 ? new Point(right - x - (w || 0), bottom - y - (h || 0)) :
+               this._rotation === 3 ? new Point(this._x + y, bottom - x - (w || 0)) :
+               new Point(this._x + x, this._y + y);
+    }
+};
+Transform.noTransform = new Transform(0, 0, 0, 0);
+
+
+
 function decToHex(v) {
     v |= 0; // Ensure integer value
     return v < 0 ? "00" :
@@ -790,56 +840,6 @@ function colorTheme(hue, config) {
         color.correctedHsl(hue, config.saturation, config.colorLightness(0))
     ];
 }
-
-
-
-/**
- * Represents a point.
- * @private
- * @constructor
- */
-function Point(x, y) {
-    this.x = x;
-    this.y = y;
-};
-
-
-
-
-/**
- * Translates and rotates a point before being passed on to the canvas context. This was previously done by the canvas context itself, 
- * but this caused a rendering issue in Chrome on sizes > 256 where the rotation transformation of inverted paths was not done properly.
- * @param {number} x The x-coordinate of the upper left corner of the transformed rectangle.
- * @param {number} y The y-coordinate of the upper left corner of the transformed rectangle.
- * @param {number} size The size of the transformed rectangle.
- * @param {number} rotation Rotation specified as 0 = 0 rad, 1 = 0.5π rad, 2 = π rad, 3 = 1.5π rad
- * @private
- * @constructor
- */
-function Transform(x, y, size, rotation) {
-    this._x = x;
-    this._y = y;
-    this._size = size;
-    this._rotation = rotation;
-}
-Transform.prototype = {
-    /**
-     * Transforms the specified point based on the translation and rotation specification for this Transform.
-     * @param {number} x x-coordinate
-     * @param {number} y y-coordinate
-     * @param {number=} w The width of the transformed rectangle. If greater than 0, this will ensure the returned point is of the upper left corner of the transformed rectangle.
-     * @param {number=} h The height of the transformed rectangle. If greater than 0, this will ensure the returned point is of the upper left corner of the transformed rectangle.
-     */
-    transformPoint: function (x, y, w, h) {
-        var right = this._x + this._size,
-            bottom = this._y + this._size;
-        return this._rotation === 1 ? new Point(right - y - (h || 0), this._y + x) :
-               this._rotation === 2 ? new Point(right - x - (w || 0), bottom - y - (h || 0)) :
-               this._rotation === 3 ? new Point(this._x + y, bottom - x - (w || 0)) :
-               new Point(this._x + x, this._y + y);
-    }
-};
-Transform.noTransform = new Transform(0, 0, 0, 0);
 
 
 
@@ -1065,11 +1065,10 @@ function toSvg(hashOrValue, size, padding) {
     iconGenerator(renderer,
         getValidHash(hashOrValue) || computeHash(hashOrValue),
         0, 0, size, padding, getCurrentConfig());
-    console.log(renderer._pathsByColor);
-    return {
-      svg: writer.toString(),
-      colors: renderer._pathsByColor
-    };
+    return [
+      writer.toString(),
+      Object.keys(renderer._pathsByColor)
+    ];
 }
 
 /**

@@ -161,10 +161,10 @@ function toSvg(hashOrValue, size, padding) {
     iconGenerator(renderer,
         getValidHash(hashOrValue) || computeHash(hashOrValue),
         0, 0, size, padding, getCurrentConfig());
-    return {
-      svg: writer.toString(),
-      colors: Object.keys(renderer._pathsByColor)
-    };
+    return [
+      writer.toString(),
+      Object.keys(renderer._pathsByColor)
+    ];
 }
 
 /**
